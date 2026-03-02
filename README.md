@@ -2,12 +2,6 @@
 
 **A trustless crypto-AI guessing game on Solana.**
 
-<div align="center">
-
-https://github.com/gabikreal1/simulation-contracts/raw/main/assets/walkthrough.mp4
-
-</div>
-
 Players deposit SOL into a program-owned escrow and compete to guess a secret answer. The answer is cryptographically committed before any deposits occur, ensuring provably fair outcomes through an on-chain commit-reveal scheme.
 
 Built with [Anchor 0.31.1](https://www.anchor-lang.com/) | Deployed on [Solana Devnet](https://explorer.solana.com/address/J5LMxDvUSz5Agbo3bjpJZN17p4BNfqGNbrhU5vqNYrEa?cluster=devnet) | [Docs](https://simulation-theory.gitbook.io/simulation-theory-docs)
@@ -72,7 +66,12 @@ npm test
 
 ```bash
 solana config set --url devnet
-solana program deploy target/deploy/alons_box.so
+anchor build
+anchor deploy --provider.cluster devnet
+
+# If upgrading an existing deployment with schema changes,
+# call migrate() once with the authority wallet:
+# await program.methods.migrate().accounts({ authority, gameState, systemProgram }).rpc();
 ```
 
 ---
@@ -109,11 +108,25 @@ solana program deploy target/deploy/alons_box.so
 | `Round` | `["round", round_id]` | Per-round state: commit hash, status, deposits |
 | `Deposit` | `["deposit", round_id, user]` | Per-user deposit tracking |
 
+### GameState Layout (121 bytes)
+
+```
+8   discriminator
+32  authority        Pubkey
+32  treasury         Pubkey
+32  buyback_wallet   Pubkey
+8   current_round_id u64
+1   bump             u8
+8   rollover_balance u64    <- added in migrate
+```
+
+`rollover_balance` tracks the cumulative SOL rolling between rounds. It is updated by `settle` and `expire`, and read by `create_round` to seed the next round's prize pool.
+
 ---
 
 ## Instructions
 
-The program exposes 8 instructions:
+The program exposes 9 instructions:
 
 | Instruction | Access | Description |
 |-------------|--------|-------------|
@@ -125,8 +138,25 @@ The program exposes 8 instructions:
 | `emergency_expire` | **Permissionless** | Dead man's switch — expire a round 24hrs after `ends_at` if authority is offline |
 | `close_deposit` | Authority | Close a Deposit PDA after round ends, recover rent |
 | `close_round` | Authority | Close a Round PDA after round ends, recover rent |
+| `migrate` | Authority | Realloc `game_state` for schema evolution (113 -> 121 bytes) |
 
 See [Instructions Reference](./docs/developers/contracts/alons-box/instructions.md) for full details.
+
+### Migration (`migrate`)
+
+The `migrate` instruction handles schema evolution for the `GameState` PDA. It was introduced to add the `rollover_balance: u64` field, growing the account from 113 to 121 bytes.
+
+**Why it exists:** Anchor deserializes accounts before instruction logic runs. The old 113-byte account cannot be deserialized as the new 121-byte `GameState` struct, so `migrate` uses a raw `AccountInfo` and manually verifies PDA seeds, program owner, and authority.
+
+**What it does:**
+- Transfers additional rent lamports from the authority
+- Reallocs the account to 121 bytes
+- Zero-fills the new bytes (`rollover_balance` defaults to 0)
+
+**Properties:**
+- Authority-only (reads authority from the old byte layout at offset 8..40)
+- Idempotent -- safe to call multiple times (no-op if already at target size)
+- Must be called once after deploying an upgrade that changes `GameState` layout
 
 ---
 
@@ -211,7 +241,7 @@ Previous rollover is **fully preserved** on expire. Only current-round deposits 
 
 ```
 programs/alons-box/src/
-  lib.rs              -- Program entry point, 8 instructions
+  lib.rs              -- Program entry point, 9 instructions
   state.rs            -- Account structs (GameState, Round, Deposit, Vault)
   errors.rs           -- Custom error codes (6000-6011)
   events.rs           -- On-chain event definitions
@@ -226,6 +256,7 @@ programs/alons-box/src/
     emergency_expire.rs -- Permissionless dead man's switch
     close_deposit.rs  -- Deposit PDA rent recovery
     close_round.rs    -- Round PDA rent recovery
+    migrate.rs        -- GameState schema migration (realloc)
 
 tests/
   alons-box.ts              -- 22 tests (core flow + adversarial)

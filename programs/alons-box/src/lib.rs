@@ -63,4 +63,8 @@ pub mod alons_box {
     pub fn close_round(ctx: Context<CloseRound>) -> Result<()> {
         instructions::close_round::handler(ctx)
     }
+
+    pub fn migrate(ctx: Context<Migrate>) -> Result<()> {
+        instructions::migrate::handler(ctx)
+    }
 }
