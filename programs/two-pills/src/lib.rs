@@ -16,7 +16,7 @@ pub mod utils;
 
 use instructions::*;
 
-declare_id!("11111111111111111111111111111111");
+declare_id!("7SbPUmDW8L44k7KRbxpMo7hBh4ocpv9kszpWz5iNPJLW");
 
 #[program]
 pub mod two_pills {

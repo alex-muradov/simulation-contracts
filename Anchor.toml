@@ -7,17 +7,17 @@ skip-lint = false
 
 [programs.localnet]
 alons_box = "J5LMxDvUSz5Agbo3bjpJZN17p4BNfqGNbrhU5vqNYrEa"
-two_pills = "11111111111111111111111111111111"
+two_pills = "7SbPUmDW8L44k7KRbxpMo7hBh4ocpv9kszpWz5iNPJLW"
 
 [programs.devnet]
 alons_box = "J5LMxDvUSz5Agbo3bjpJZN17p4BNfqGNbrhU5vqNYrEa"
-two_pills = "11111111111111111111111111111111"
+two_pills = "7SbPUmDW8L44k7KRbxpMo7hBh4ocpv9kszpWz5iNPJLW"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Devnet"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

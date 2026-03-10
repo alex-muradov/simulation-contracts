@@ -581,12 +581,22 @@ describe("two_pills", () => {
   // ═══════════════════════════════════════════════════════════
 
   describe("NRR seeding", () => {
-    it("NRR was funded by settlement of round 1", async () => {
+    it("NRR was consumed by round 2 seeds (settle round 1 funded 10M, round 2 creation spent it)", async () => {
       const gs = await program.account.pillsGameState.fetch(gameStatePda);
-      // Round 1 settle: nrr_share = 10_000_000 (20% of 0.05 SOL loser pool)
-      // Round 2 settle: poolB = 0, so nrr_share = 0
-      // Total NRR = 10_000_000
-      expect(gs.nrrBalance.toNumber()).to.be.greaterThan(0);
+      // Round 1 settle: nrr += 10_000_000 (20% of 0.05 SOL loser pool)
+      // Round 2 create: nrr -= 10_000_000 (consumed as seeds: 5M + 5M)
+      // Round 2 settle: nrr += seeds_total(10M) + nrr_share(0) = 10_000_000
+      //   (pool only had side A, no loser deposits, but seeds return)
+      // Round 3 create: nrr -= 10_000_000 (consumed as seeds again)
+      // Round 3 NOT settled (still active) — seeds not returned yet
+      // Current NRR balance = 0
+      expect(gs.nrrBalance.toNumber()).to.equal(0);
+
+      // Verify round 2 DID receive seeds from NRR
+      const [round2Pda] = getRoundPda(2);
+      const round2 = await program.account.pillsRound.fetch(round2Pda);
+      expect(round2.seedA.toNumber()).to.equal(5_000_000);
+      expect(round2.seedB.toNumber()).to.equal(5_000_000);
     });
   });
 
