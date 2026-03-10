@@ -71,6 +71,7 @@ pub fn handler(ctx: Context<CreateRound>, round_id: u64, ends_at: i64) -> Result
     round.total_claimed = 0;
     round.treasury_paid = 0;
     round.nrr_returned = 0;
+    round.settled_at = 0;
     round.swept = false;
     round.bump = ctx.bumps.round;
 

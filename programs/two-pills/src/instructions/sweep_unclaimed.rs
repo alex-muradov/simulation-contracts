@@ -30,10 +30,11 @@ pub struct SweepUnclaimed<'info> {
 pub fn handler(ctx: Context<SweepUnclaimed>) -> Result<()> {
     let round = &ctx.accounts.round;
 
-    // Enforce sweep window (7 days after round ends)
+    // [AUDIT FIX L-5] Use settled_at (not ends_at) for sweep window — guarantees
+    // winners always have exactly 7 days from settlement to claim
     let clock = Clock::get()?;
     require!(
-        clock.unix_timestamp > round.ends_at + SWEEP_WINDOW,
+        round.settled_at > 0 && clock.unix_timestamp > round.settled_at + SWEEP_WINDOW,
         TwoPillsError::SweepWindowNotElapsed
     );
 

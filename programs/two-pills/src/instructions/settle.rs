@@ -51,6 +51,19 @@ pub fn handler(ctx: Context<Settle>, winner: u8) -> Result<()> {
 
     let round = &mut ctx.accounts.round;
 
+    // [AUDIT FIX H-settle] Require round time has elapsed
+    let clock = Clock::get()?;
+    require!(
+        clock.unix_timestamp >= round.ends_at,
+        TwoPillsError::RoundNotEnded
+    );
+
+    // [AUDIT FIX C-4] Require at least one deposit exists
+    require!(
+        round.pool_a > 0 || round.pool_b > 0,
+        TwoPillsError::RoundHasNoDeposits
+    );
+
     // Determine loser deposits
     let loser_deposits = match winner_side {
         Side::A => round.pool_b,
@@ -105,6 +118,8 @@ pub fn handler(ctx: Context<Settle>, winner: u8) -> Result<()> {
     round.total_claimed = 0;
     round.treasury_paid = treasury_amount;
     round.nrr_returned = total_nrr_return;
+    // [AUDIT FIX M-sweep] Record settlement timestamp for sweep window
+    round.settled_at = clock.unix_timestamp;
 
     emit!(RoundSettled {
         round_id: round.round_id,

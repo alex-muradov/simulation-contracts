@@ -94,14 +94,17 @@ pub fn handler(ctx: Context<Claim>) -> Result<()> {
         .checked_sub(nrr_amount)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Player's proportional share: (their_stake / winner_pool) * winners_share
-    let player_winnings = if winner_pool > 0 {
-        position
-            .total_deposited
-            .checked_mul(winners_share)
-            .ok_or(TwoPillsError::MathOverflow)?
-            .checked_div(winner_pool)
-            .ok_or(TwoPillsError::MathOverflow)?
+    // [AUDIT FIX M-4] Use u128 intermediate to prevent overflow on large pools
+    // Player's proportional share: (their_stake * winners_share) / winner_pool
+    let player_winnings: u64 = if winner_pool > 0 {
+        let numerator = (position.total_deposited as u128)
+            .checked_mul(winners_share as u128)
+            .ok_or(TwoPillsError::MathOverflow)?;
+        let result = numerator
+            .checked_div(winner_pool as u128)
+            .ok_or(TwoPillsError::MathOverflow)?;
+        // Safe cast: result <= winners_share which is u64
+        result as u64
     } else {
         0
     };

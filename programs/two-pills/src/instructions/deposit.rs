@@ -48,6 +48,13 @@ pub struct Deposit<'info> {
 }
 
 pub fn handler(ctx: Context<Deposit>, side: u8, amount: u64) -> Result<()> {
+    // [AUDIT FIX C-3] Reject deposits after round end time
+    let clock = Clock::get()?;
+    require!(
+        clock.unix_timestamp < ctx.accounts.round.ends_at,
+        TwoPillsError::RoundEnded
+    );
+
     // Validate tier
     require!(is_valid_tier(amount), TwoPillsError::InvalidAmount);
 
@@ -60,14 +67,15 @@ pub fn handler(ctx: Context<Deposit>, side: u8, amount: u64) -> Result<()> {
 
     let position = &mut ctx.accounts.position;
 
-    // First deposit: initialize position fields
-    if position.player == Pubkey::default() {
+    // [AUDIT FIX C-1] Use explicit is_initialized flag instead of Pubkey::default sentinel
+    if !position.is_initialized {
         position.player = ctx.accounts.player.key();
         position.round_id = ctx.accounts.round.round_id;
         position.side = deposit_side;
         position.total_deposited = 0;
         position.num_deposits = 0;
         position.claimed = false;
+        position.is_initialized = true;
         position.bump = ctx.bumps.position;
 
         // Increment unique player count

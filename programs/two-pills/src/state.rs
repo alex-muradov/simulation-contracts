@@ -58,13 +58,14 @@ pub struct PillsRound {
     pub total_claimed: u64,  // total lamports claimed by winners so far
     pub treasury_paid: u64,  // treasury fee already paid
     pub nrr_returned: u64,   // NRR share already returned
+    pub settled_at: i64,     // unix timestamp when settled (0 if not yet)
     pub swept: bool,         // whether unclaimed funds were swept
     pub bump: u8,
 }
 
 impl PillsRound {
-    // 8 disc + 8 + 8 + 8 + 2 + 2 + 8 + 8 + 1 + 1 + 8 + 8 + 8 + 8 + 1 + 1 = 88
-    pub const SIZE: usize = 8 + 8 + 8 + 8 + 2 + 2 + 8 + 8 + 1 + 1 + 8 + 8 + 8 + 8 + 1 + 1;
+    // 8 disc + 8 + 8 + 8 + 2 + 2 + 8 + 8 + 1 + 1 + 8 + 8 + 8 + 8 + 8 + 1 + 1 = 96
+    pub const SIZE: usize = 8 + 8 + 8 + 8 + 2 + 2 + 8 + 8 + 1 + 1 + 8 + 8 + 8 + 8 + 8 + 1 + 1;
 }
 
 // ── PlayerPosition PDA ── seeds: ["position", round_id (u64 LE), player pubkey]
@@ -76,10 +77,11 @@ pub struct PlayerPosition {
     pub total_deposited: u64,
     pub num_deposits: u8,
     pub claimed: bool,
+    pub is_initialized: bool, // explicit init flag (safer than Pubkey::default sentinel)
     pub bump: u8,
 }
 
 impl PlayerPosition {
-    // 8 disc + 32 + 8 + 1 + 8 + 1 + 1 + 1 = 60
-    pub const SIZE: usize = 8 + 32 + 8 + 1 + 8 + 1 + 1 + 1;
+    // 8 disc + 32 + 8 + 1 + 8 + 1 + 1 + 1 + 1 = 61
+    pub const SIZE: usize = 8 + 32 + 8 + 1 + 8 + 1 + 1 + 1 + 1;
 }

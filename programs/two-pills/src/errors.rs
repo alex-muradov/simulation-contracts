@@ -34,4 +34,10 @@ pub enum TwoPillsError {
     MathOverflow,
     #[msg("Invalid winner: must be A or B")]
     InvalidWinner,
+    #[msg("Round has not ended yet")]
+    RoundNotEnded,
+    #[msg("Round has ended: deposits no longer accepted")]
+    RoundEnded,
+    #[msg("Round has no deposits: use expire instead")]
+    RoundHasNoDeposits,
 }
