@@ -17,7 +17,7 @@ two_pills = "7SbPUmDW8L44k7KRbxpMo7hBh4ocpv9kszpWz5iNPJLW"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
