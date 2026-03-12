@@ -18,7 +18,3 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
-
-# Pin blake3 to pre-edition2024 version. Solana platform-tools
-# bundle rustc 1.84 which can't parse edition2024 crates.
-blake3 = "=1.5.5"

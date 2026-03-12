@@ -53,4 +53,12 @@ pub mod two_pills {
     pub fn sweep_unclaimed(ctx: Context<SweepUnclaimed>) -> Result<()> {
         instructions::sweep_unclaimed::handler(ctx)
     }
+
+    pub fn transfer_authority(ctx: Context<TransferAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::transfer_authority::handler(ctx, new_authority)
+    }
+
+    pub fn close_position(ctx: Context<ClosePosition>) -> Result<()> {
+        instructions::close_position::handler(ctx)
+    }
 }

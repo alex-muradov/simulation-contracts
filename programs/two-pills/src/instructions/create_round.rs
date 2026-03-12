@@ -59,8 +59,9 @@ pub fn handler(ctx: Context<CreateRound>, round_id: u64, ends_at: i64) -> Result
 
     let round = &mut ctx.accounts.round;
     round.round_id = round_id;
-    round.pool_a = 0;
-    round.pool_b = 0;
+    // Seeds enter pools as real initial liquidity (NRR subsidizes rounds)
+    round.pool_a = seed_a;
+    round.pool_b = seed_b;
     round.players_a = 0;
     round.players_b = 0;
     round.seed_a = seed_a;

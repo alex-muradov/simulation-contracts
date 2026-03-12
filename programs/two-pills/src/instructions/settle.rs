@@ -58,68 +58,66 @@ pub fn handler(ctx: Context<Settle>, winner: u8) -> Result<()> {
         TwoPillsError::RoundNotEnded
     );
 
-    // [AUDIT FIX C-4] Require at least one deposit exists
+    // Require at least one real player (pools include seeds now, so check player counts)
     require!(
-        round.pool_a > 0 || round.pool_b > 0,
+        round.players_a > 0 || round.players_b > 0,
         TwoPillsError::RoundHasNoDeposits
     );
 
-    // Determine loser deposits
-    let loser_deposits = match winner_side {
-        Side::A => round.pool_b,
-        Side::B => round.pool_a,
+    // [REVIEW FIX] Guard: winning side must have real players
+    match winner_side {
+        Side::A => require!(round.players_a > 0, TwoPillsError::NoPlayersOnWinningSide),
+        Side::B => require!(round.players_b > 0, TwoPillsError::NoPlayersOnWinningSide),
+        _ => {}
+    }
+
+    // Determine loser deposits (player deposits only, exclude seeds)
+    let loser_player_deposits = match winner_side {
+        Side::A => round.pool_b.checked_sub(round.seed_b).ok_or(TwoPillsError::MathOverflow)?,
+        Side::B => round.pool_a.checked_sub(round.seed_a).ok_or(TwoPillsError::MathOverflow)?,
         _ => 0,
     };
 
-    // Calculate splits from loser deposits
-    let treasury_amount = loser_deposits
+    // Calculate splits from loser player deposits
+    let treasury_amount = loser_player_deposits
         .checked_mul(TREASURY_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    let nrr_share = loser_deposits
+    let nrr_share = loser_player_deposits
         .checked_mul(NRR_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Winners share = remainder (70%)
-    let winners_share = loser_deposits
+    // Winners share = 70% of loser player deposits
+    let winners_share = loser_player_deposits
         .checked_sub(treasury_amount)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_sub(nrr_share)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Seeds return to NRR
-    let seeds_total = round
-        .seed_a
-        .checked_add(round.seed_b)
-        .ok_or(TwoPillsError::MathOverflow)?;
+    // NRR return = only nrr_share (seeds are already in pools, no double-return)
+    let total_nrr_return = nrr_share;
 
-    let total_nrr_return = nrr_share
-        .checked_add(seeds_total)
-        .ok_or(TwoPillsError::MathOverflow)?;
+    // [REVIEW FIX] Effects-before-interactions: update state BEFORE transfer
+    round.status = RoundStatus::Settled;
+    round.winner = winner_side;
+    round.total_claimed = 0;
+    round.treasury_paid = treasury_amount;
+    round.nrr_returned = total_nrr_return;
+    round.settled_at = clock.unix_timestamp;
 
-    // Transfer treasury fee from vault
-    let vault_info = ctx.accounts.vault.to_account_info();
-    transfer_from_vault(&vault_info, &ctx.accounts.treasury, treasury_amount)?;
-
-    // Update NRR balance (nrr_share is virtual — SOL stays in vault, accounted in GameState)
     let game_state = &mut ctx.accounts.game_state;
     game_state.nrr_balance = game_state
         .nrr_balance
         .checked_add(total_nrr_return)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Update round state
-    round.status = RoundStatus::Settled;
-    round.winner = winner_side;
-    round.total_claimed = 0;
-    round.treasury_paid = treasury_amount;
-    round.nrr_returned = total_nrr_return;
-    // [AUDIT FIX M-sweep] Record settlement timestamp for sweep window
-    round.settled_at = clock.unix_timestamp;
+    // Transfer treasury fee from vault (interaction after effects)
+    let vault_info = ctx.accounts.vault.to_account_info();
+    transfer_from_vault(&vault_info, &ctx.accounts.treasury, treasury_amount)?;
 
     emit!(RoundSettled {
         round_id: round.round_id,
