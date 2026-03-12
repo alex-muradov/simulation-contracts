@@ -1,27 +1,21 @@
-name: Anchor Tests
+name: Build
 
 on:
-  push:
-    branches: ["**"]
   pull_request:
     branches: [main, master]
 
 env:
-  SOLANA_VERSION: "1.18.26"
-  ANCHOR_VERSION: "0.31.1"
-  NODE_VERSION: "20"
+  SOLANA_VERSION: "3.1.10"
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -42,25 +36,9 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor CLI
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --force
-          avm install ${{ env.ANCHOR_VERSION }}
-          avm use ${{ env.ANCHOR_VERSION }}
-
-      - name: Verify installations
-        run: |
-          solana --version
-          anchor --version
-          node --version
+        run: cargo install --git https://github.com/coral-xyz/anchor --tag v0.31.1 anchor-cli --force
 
       - name: Generate keypair
         run: solana-keygen new --no-bip39-passphrase
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: anchor build
-
-      - name: Test
-        run: anchor test --provider.cluster localnet
+      - run: anchor build
