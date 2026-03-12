@@ -68,40 +68,46 @@ pub fn handler(ctx: Context<Claim>) -> Result<()> {
 
     let round = &ctx.accounts.round;
 
-    // Calculate payout
-    let (winner_pool, loser_deposits) = match round.winner {
-        Side::A => (round.pool_a, round.pool_b),
-        Side::B => (round.pool_b, round.pool_a),
+    // Calculate payout — use player deposits only (exclude seeds)
+    let (winner_player_pool, loser_player_deposits) = match round.winner {
+        Side::A => (
+            round.pool_a.checked_sub(round.seed_a).ok_or(TwoPillsError::MathOverflow)?,
+            round.pool_b.checked_sub(round.seed_b).ok_or(TwoPillsError::MathOverflow)?,
+        ),
+        Side::B => (
+            round.pool_b.checked_sub(round.seed_b).ok_or(TwoPillsError::MathOverflow)?,
+            round.pool_a.checked_sub(round.seed_a).ok_or(TwoPillsError::MathOverflow)?,
+        ),
         _ => return Err(TwoPillsError::RoundNotSettled.into()),
     };
 
-    // winners_share = loser_deposits - treasury(10%) - nrr(20%) = 70% of loser deposits
-    let treasury_amount = loser_deposits
+    // winners_share = loser_player_deposits - treasury(10%) - nrr(20%) = 70%
+    let treasury_amount = loser_player_deposits
         .checked_mul(TREASURY_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    let nrr_amount = loser_deposits
+    let nrr_amount = loser_player_deposits
         .checked_mul(NRR_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    let winners_share = loser_deposits
+    let winners_share = loser_player_deposits
         .checked_sub(treasury_amount)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_sub(nrr_amount)
         .ok_or(TwoPillsError::MathOverflow)?;
 
     // [AUDIT FIX M-4] Use u128 intermediate to prevent overflow on large pools
-    // Player's proportional share: (their_stake * winners_share) / winner_pool
-    let player_winnings: u64 = if winner_pool > 0 {
+    // Player's proportional share: (their_stake * winners_share) / winner_player_pool
+    let player_winnings: u64 = if winner_player_pool > 0 {
         let numerator = (position.total_deposited as u128)
             .checked_mul(winners_share as u128)
             .ok_or(TwoPillsError::MathOverflow)?;
         let result = numerator
-            .checked_div(winner_pool as u128)
+            .checked_div(winner_player_pool as u128)
             .ok_or(TwoPillsError::MathOverflow)?;
         // Safe cast: result <= winners_share which is u64
         result as u64
@@ -115,20 +121,19 @@ pub fn handler(ctx: Context<Claim>) -> Result<()> {
         .checked_add(player_winnings)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Transfer from vault → beneficiary
-    let vault_info = ctx.accounts.vault.to_account_info();
-    transfer_from_vault(&vault_info, &ctx.accounts.beneficiary, payout)?;
-
-    // Mark as claimed
+    // [REVIEW FIX] Effects-before-interactions: update state BEFORE transfer
     let position = &mut ctx.accounts.position;
     position.claimed = true;
 
-    // Track total claimed on round
     let round = &mut ctx.accounts.round;
     round.total_claimed = round
         .total_claimed
         .checked_add(payout)
         .ok_or(TwoPillsError::MathOverflow)?;
+
+    // Transfer from vault → beneficiary (interaction after effects)
+    let vault_info = ctx.accounts.vault.to_account_info();
+    transfer_from_vault(&vault_info, &ctx.accounts.beneficiary, payout)?;
 
     emit!(PayoutClaimed {
         round_id: round.round_id,

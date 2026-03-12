@@ -1,6 +1,12 @@
 use anchor_lang::prelude::*;
+use crate::errors::TwoPillsError;
+
+/// Minimum lamports to keep in vault for rent-exemption (~890,880 for 9-byte account).
+/// Using a safe margin above the exact requirement.
+pub const VAULT_RENT_MINIMUM: u64 = 897_840;
 
 /// Transfer lamports from vault PDA (program-owned) to a recipient.
+/// Ensures vault never drops below rent-exempt minimum.
 pub fn transfer_from_vault<'info>(
     vault: &AccountInfo<'info>,
     to: &AccountInfo<'info>,
@@ -9,6 +15,11 @@ pub fn transfer_from_vault<'info>(
     if amount == 0 {
         return Ok(());
     }
+    let vault_lamports = vault.lamports();
+    require!(
+        vault_lamports >= amount.checked_add(VAULT_RENT_MINIMUM).ok_or(TwoPillsError::MathOverflow)?,
+        TwoPillsError::VaultInsolvent
+    );
     **vault.try_borrow_mut_lamports()? -= amount;
     **to.try_borrow_mut_lamports()? += amount;
     Ok(())

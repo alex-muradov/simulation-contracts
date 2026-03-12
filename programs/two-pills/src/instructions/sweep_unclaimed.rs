@@ -38,33 +38,39 @@ pub fn handler(ctx: Context<SweepUnclaimed>) -> Result<()> {
         TwoPillsError::SweepWindowNotElapsed
     );
 
-    // Calculate max possible claims (what all winners could claim)
-    let (winner_pool, loser_deposits) = match round.winner {
-        Side::A => (round.pool_a, round.pool_b),
-        Side::B => (round.pool_b, round.pool_a),
+    // Calculate max possible claims — use player deposits only (exclude seeds)
+    let (winner_player_pool, loser_player_deposits) = match round.winner {
+        Side::A => (
+            round.pool_a.checked_sub(round.seed_a).ok_or(TwoPillsError::MathOverflow)?,
+            round.pool_b.checked_sub(round.seed_b).ok_or(TwoPillsError::MathOverflow)?,
+        ),
+        Side::B => (
+            round.pool_b.checked_sub(round.seed_b).ok_or(TwoPillsError::MathOverflow)?,
+            round.pool_a.checked_sub(round.seed_a).ok_or(TwoPillsError::MathOverflow)?,
+        ),
         _ => return Err(TwoPillsError::RoundNotSettled.into()),
     };
 
-    let treasury_amount = loser_deposits
+    let treasury_amount = loser_player_deposits
         .checked_mul(TREASURY_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    let nrr_amount = loser_deposits
+    let nrr_amount = loser_player_deposits
         .checked_mul(NRR_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    let winners_share = loser_deposits
+    let winners_share = loser_player_deposits
         .checked_sub(treasury_amount)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_sub(nrr_amount)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Max payable = all winner stakes back + all winnings
-    let max_payable = winner_pool
+    // Max payable = all winner player stakes back + all winnings
+    let max_payable = winner_player_pool
         .checked_add(winners_share)
         .ok_or(TwoPillsError::MathOverflow)?;
 
@@ -73,11 +79,22 @@ pub fn handler(ctx: Context<SweepUnclaimed>) -> Result<()> {
         .checked_sub(round.total_claimed)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Add unclaimed to NRR (SOL stays in vault, accounted in GameState)
+    // Winner-side seed is not claimable by any player — return to NRR
+    let winner_seed = match round.winner {
+        Side::A => round.seed_a,
+        Side::B => round.seed_b,
+        _ => 0,
+    };
+
+    let total_sweep = unclaimed
+        .checked_add(winner_seed)
+        .ok_or(TwoPillsError::MathOverflow)?;
+
+    // Add unclaimed + winner seed to NRR (SOL stays in vault, accounted in GameState)
     let game_state = &mut ctx.accounts.game_state;
     game_state.nrr_balance = game_state
         .nrr_balance
-        .checked_add(unclaimed)
+        .checked_add(total_sweep)
         .ok_or(TwoPillsError::MathOverflow)?;
 
     // Mark as swept
@@ -86,7 +103,7 @@ pub fn handler(ctx: Context<SweepUnclaimed>) -> Result<()> {
 
     emit!(UnclaimedSwept {
         round_id: round.round_id,
-        amount: unclaimed,
+        amount: total_sweep,
     });
 
     Ok(())

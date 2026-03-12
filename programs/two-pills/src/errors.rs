@@ -40,4 +40,10 @@ pub enum TwoPillsError {
     RoundEnded,
     #[msg("Round has no deposits: use expire instead")]
     RoundHasNoDeposits,
+    #[msg("Vault balance too low: would drop below rent-exempt minimum")]
+    VaultInsolvent,
+    #[msg("Round has no players on winning side")]
+    NoPlayersOnWinningSide,
+    #[msg("Position must be claimed before closing (winner side)")]
+    MustClaimFirst,
 }

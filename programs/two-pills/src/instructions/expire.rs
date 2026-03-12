@@ -28,13 +28,20 @@ pub struct Expire<'info> {
 pub fn handler(ctx: Context<Expire>) -> Result<()> {
     let round = &ctx.accounts.round;
 
-    // Only expire rounds with zero deposits
+    // [REVIEW FIX] Require round time has elapsed
+    let clock = Clock::get()?;
     require!(
-        round.pool_a == 0 && round.pool_b == 0,
+        clock.unix_timestamp >= round.ends_at,
+        TwoPillsError::RoundNotEnded
+    );
+
+    // Only expire rounds with no real players (pools may contain seeds)
+    require!(
+        round.players_a == 0 && round.players_b == 0,
         TwoPillsError::RoundHasDeposits
     );
 
-    // Return seeds to NRR
+    // Return seeds to NRR (seeds were added to pools at creation)
     let seeds_total = round
         .seed_a
         .checked_add(round.seed_b)
