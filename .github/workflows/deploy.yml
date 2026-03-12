@@ -34,10 +34,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor CLI
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --force
-          avm install ${{ env.ANCHOR_VERSION }}
-          avm use ${{ env.ANCHOR_VERSION }}
+        run: cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --force
 
       - name: Setup deployer keypair
         run: echo '${{ secrets.DEPLOYER_KEYPAIR }}' > ~/.config/solana/id.json
