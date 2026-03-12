@@ -5,7 +5,7 @@ on:
     branches: [main, master]
 
 env:
-  SOLANA_VERSION: "1.18.26"
+  SOLANA_VERSION: "3.1.10"
 
 jobs:
   build:
