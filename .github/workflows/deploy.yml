@@ -9,7 +9,38 @@ env:
   ANCHOR_VERSION: "0.31.1"
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      alons_box: ${{ steps.changes.outputs.alons_box }}
+      two_pills: ${{ steps.changes.outputs.two_pills }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed programs
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          if echo "$CHANGED" | grep -q "^programs/alons-box/"; then
+            echo "alons_box=true" >> $GITHUB_OUTPUT
+          else
+            echo "alons_box=false" >> $GITHUB_OUTPUT
+          fi
+
+          if echo "$CHANGED" | grep -q "^programs/two-pills/"; then
+            echo "two_pills=true" >> $GITHUB_OUTPUT
+          else
+            echo "two_pills=false" >> $GITHUB_OUTPUT
+          fi
+
   deploy:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.alons_box == 'true' || needs.detect-changes.outputs.two_pills == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,5 +78,10 @@ jobs:
 
       - run: anchor build
 
-      - name: Deploy to devnet
-        run: anchor deploy --provider.cluster devnet
+      - name: Deploy Alon's Box
+        if: needs.detect-changes.outputs.alons_box == 'true'
+        run: anchor deploy --provider.cluster devnet --program-name alons_box
+
+      - name: Deploy Two Pills
+        if: needs.detect-changes.outputs.two_pills == 'true'
+        run: anchor deploy --provider.cluster devnet --program-name two_pills
