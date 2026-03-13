@@ -85,3 +85,63 @@ jobs:
       - name: Deploy Two Pills
         if: needs.detect-changes.outputs.two_pills == 'true'
         run: anchor deploy --provider.cluster devnet --program-name two_pills
+
+      - name: Upload IDL artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: idl
+          path: target/idl/*.json
+
+  sync-idl:
+    needs: [detect-changes, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download IDL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: idl
+          path: idl
+
+      - name: Sync IDL to backend repo
+        env:
+          GH_TOKEN: ${{ secrets.REPO_SYNC_TOKEN }}
+        run: |
+          sync_idl() {
+            local program=$1 repo=$2 dest_path=$3
+            if [ ! -f "idl/${program}.json" ]; then
+              echo "No IDL for ${program}, skipping"
+              return
+            fi
+
+            if [ ! -d "/tmp/${repo}" ]; then
+              git clone "https://x-access-token:${GH_TOKEN}@github.com/alex-muradov/${repo}.git" "/tmp/${repo}"
+              cd "/tmp/${repo}"
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              cd -
+            fi
+
+            cp "idl/${program}.json" "/tmp/${repo}/${dest_path}/${program}.json"
+          }
+
+          # Sync changed IDLs to backend
+          if [ "${{ needs.detect-changes.outputs.alons_box }}" = "true" ]; then
+            sync_idl "alons_box" "simulation-back" "src/idl"
+          fi
+          if [ "${{ needs.detect-changes.outputs.two_pills }}" = "true" ]; then
+            sync_idl "two_pills" "simulation-back" "src/idl"
+          fi
+
+          # Commit and push backend if changed
+          if [ -d "/tmp/simulation-back" ]; then
+            cd /tmp/simulation-back
+            if ! git diff --quiet; then
+              git add src/idl/
+              git commit -m "chore: sync IDL from contracts deploy"
+              git push origin master
+              echo "✅ Backend IDL synced"
+            else
+              echo "No IDL changes for backend"
+            fi
+            cd -
+          fi
