@@ -17,12 +17,19 @@
 
 ## Games
 
-### Alon's Box
+### Alon's Box (V1)
 
 - [Overview](games/alons-box/overview.md)
 - [Rounds](games/alons-box/rounds.md)
 - [Actions and Economy](games/alons-box/actions-and-economy.md)
 - [Realms](games/alons-box/realms.md)
+
+### Alon's Box V2
+
+- [Overview](games/alons-box-v2/overview.md)
+- [Entry Fees](games/alons-box-v2/entry-fees.md)
+- [Rounds](games/alons-box-v2/rounds.md)
+- [Evidence & YES Pool](games/alons-box-v2/evidence-and-yes-pool.md)
 
 ## Developers
 
@@ -34,13 +41,21 @@
 
 - [Shared Patterns](developers/contracts/shared-patterns.md)
 
-#### Alon's Box
+#### Alon's Box (V1)
 
 - [Instructions Reference](developers/contracts/alons-box/instructions.md)
 - [PDA Accounts](developers/contracts/alons-box/pda-accounts.md)
 - [Commit-Reveal Scheme](developers/contracts/alons-box/commit-reveal.md)
 - [Error Codes](developers/contracts/alons-box/error-codes.md)
 - [Security Model](developers/contracts/alons-box/security-model.md)
+
+#### Alon's Box V2
+
+- [Instructions Reference](developers/contracts/alons-box-v2/instructions.md)
+- [PDA Accounts](developers/contracts/alons-box-v2/pda-accounts.md)
+- [Evidence System](developers/contracts/alons-box-v2/evidence-system.md)
+- [Error Codes](developers/contracts/alons-box-v2/error-codes.md)
+- [Security Model](developers/contracts/alons-box-v2/security-model.md)
 
 ### Guides
 

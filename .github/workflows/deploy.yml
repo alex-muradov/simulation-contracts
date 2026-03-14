@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       alons_box: ${{ steps.changes.outputs.alons_box }}
+      alons_box_v2: ${{ steps.changes.outputs.alons_box_v2 }}
       two_pills: ${{ steps.changes.outputs.two_pills }}
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,12 @@ jobs:
             echo "alons_box=false" >> $GITHUB_OUTPUT
           fi
 
+          if echo "$CHANGED" | grep -q "^programs/alons-box-v2/"; then
+            echo "alons_box_v2=true" >> $GITHUB_OUTPUT
+          else
+            echo "alons_box_v2=false" >> $GITHUB_OUTPUT
+          fi
+
           if echo "$CHANGED" | grep -q "^programs/two-pills/"; then
             echo "two_pills=true" >> $GITHUB_OUTPUT
           else
@@ -40,7 +47,7 @@ jobs:
 
   deploy:
     needs: detect-changes
-    if: needs.detect-changes.outputs.alons_box == 'true' || needs.detect-changes.outputs.two_pills == 'true'
+    if: needs.detect-changes.outputs.alons_box == 'true' || needs.detect-changes.outputs.alons_box_v2 == 'true' || needs.detect-changes.outputs.two_pills == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +88,10 @@ jobs:
       - name: Deploy Alon's Box
         if: needs.detect-changes.outputs.alons_box == 'true'
         run: anchor deploy --provider.cluster devnet --program-name alons_box
+
+      - name: Deploy Alon's Box V2
+        if: needs.detect-changes.outputs.alons_box_v2 == 'true'
+        run: anchor deploy --provider.cluster devnet --program-name alons_box_v2
 
       - name: Deploy Two Pills
         if: needs.detect-changes.outputs.two_pills == 'true'
@@ -127,6 +138,9 @@ jobs:
           # Sync changed IDLs to backend
           if [ "${{ needs.detect-changes.outputs.alons_box }}" = "true" ]; then
             sync_idl "alons_box" "simulation-back" "src/idl"
+          fi
+          if [ "${{ needs.detect-changes.outputs.alons_box_v2 }}" = "true" ]; then
+            sync_idl "alons_box_v2" "simulation-back" "src/idl"
           fi
           if [ "${{ needs.detect-changes.outputs.two_pills }}" = "true" ]; then
             sync_idl "two_pills" "simulation-back" "src/idl"
