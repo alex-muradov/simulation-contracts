@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::errors::V2Error;
 use crate::events::V2GameInitialized;
 use crate::state::*;
 
@@ -35,6 +36,12 @@ pub fn handler(
     round_duration_secs: i64,
     entry_cutoff_secs: i64,
 ) -> Result<()> {
+    require!(round_duration_secs > 0, V2Error::InvalidRoundDuration);
+    require!(
+        entry_cutoff_secs >= 0 && entry_cutoff_secs < round_duration_secs,
+        V2Error::InvalidEntryCutoff
+    );
+
     let game_state = &mut ctx.accounts.game_state;
     game_state.authority = ctx.accounts.authority.key();
     game_state.treasury = treasury;

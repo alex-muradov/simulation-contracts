@@ -50,6 +50,9 @@ pub struct Settle<'info> {
 }
 
 pub fn handler(ctx: Context<Settle>, answer: String, salt: String) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    require!(now >= ctx.accounts.round.ends_at, V2Error::RoundStillActive);
+
     require!(answer.len() <= 64, V2Error::AnswerTooLong);
     require!(salt.len() <= 64, V2Error::SaltTooLong);
 

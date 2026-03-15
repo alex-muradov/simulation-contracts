@@ -38,4 +38,8 @@ pub enum V2Error {
     NothingToClaim,
     #[msg("Round not settled")]
     RoundNotSettled,
+    #[msg("Invalid round duration")]
+    InvalidRoundDuration,
+    #[msg("Invalid entry cutoff")]
+    InvalidEntryCutoff,
 }
