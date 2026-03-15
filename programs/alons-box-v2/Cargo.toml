@@ -1,0 +1,26 @@
+[package]
+name = "alons-box-v2"
+version = "0.1.0"
+description = "V2 smart contract for Alon's Box game"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "alons_box_v2"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+
+# Pin blake3 to pre-edition2024 version. Solana platform-tools
+# bundle rustc 1.84 which can't parse edition2024 crates.
+# solana-blake3-hasher requires blake3 ^1.5.5, so =1.5.5 satisfies it.
+# Remove this pin once platform-tools ship rustc 1.85+.
+blake3 = "=1.5.5"
