@@ -89,7 +89,14 @@ jobs:
       - name: Configure Solana for devnet
         run: solana config set --url devnet
 
-      - run: anchor build
+      - name: Build (uses cached keypairs, generates if missing)
+        run: anchor build
+
+      - name: Sync declare_id! and Anchor.toml to match keypairs
+        run: anchor keys sync
+
+      - name: Rebuild with correct declare_id! (IDL gets correct address)
+        run: anchor build
 
       - name: Deploy Alon's Box
         if: needs.detect-changes.outputs.alons_box == 'true'
