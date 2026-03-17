@@ -106,6 +106,13 @@ jobs:
         if: needs.detect-changes.outputs.alons_box_v2 == 'true'
         run: anchor deploy --provider.cluster devnet --program-name alons_box_v2
 
+      - name: Initialize Alon's Box V2 (idempotent — skips if already init)
+        if: needs.detect-changes.outputs.alons_box_v2 == 'true'
+        env:
+          TREASURY_PUBKEY: ${{ secrets.TREASURY_PUBKEY }}
+          BUYBACK_PUBKEY: ${{ secrets.BUYBACK_PUBKEY }}
+        run: anchor run init-v2 --provider.cluster devnet
+
       - name: Deploy Two Pills
         if: needs.detect-changes.outputs.two_pills == 'true'
         run: anchor deploy --provider.cluster devnet --program-name two_pills
