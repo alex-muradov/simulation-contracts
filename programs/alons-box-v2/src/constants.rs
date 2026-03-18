@@ -29,7 +29,7 @@ pub const BASE_ENTRY_FEE: u64 = 50_000_000;
 /// Entry fee increment per price interval: 0.01 SOL in lamports
 pub const ENTRY_FEE_INCREMENT: u64 = 10_000_000;
 
-/// Price interval: 2 minutes in seconds
+/// Price interval: 2 minutes (120 seconds)
 pub const PRICE_INTERVAL_SECS: i64 = 120;
 
 /// Emergency grace period: 24 hours in seconds
