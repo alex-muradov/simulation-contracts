@@ -113,10 +113,11 @@ jobs:
 
       - name: Initialize Alon's Box V2 (idempotent — skips if already init)
         if: needs.detect-changes.outputs.alons_box_v2 == 'true'
+        continue-on-error: true
         env:
           TREASURY_PUBKEY: ${{ secrets.TREASURY_PUBKEY }}
           BUYBACK_PUBKEY: ${{ secrets.BUYBACK_PUBKEY }}
-        run: anchor run init-v2 --provider.cluster devnet
+        run: npx ts-mocha -p ./tsconfig.json -t 30000 scripts/init-v2.ts
 
       - name: Deploy Two Pills
         if: needs.detect-changes.outputs.two_pills == 'true'
