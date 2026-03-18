@@ -24,3 +24,4 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+init-v2 = "npx ts-node --esm scripts/init-v2.ts"

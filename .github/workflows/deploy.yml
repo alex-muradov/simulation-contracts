@@ -95,6 +95,11 @@ jobs:
       - name: Sync declare_id! and Anchor.toml to match keypairs
         run: anchor keys sync
 
+      - name: Pin V2 to deployed address (upgrade, not fresh deploy)
+        run: |
+          sed -i 's/declare_id!(".*")/declare_id!("21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg")/' programs/alons-box-v2/src/lib.rs
+          sed -i 's/alons_box_v2 = ".*"/alons_box_v2 = "21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg"/' Anchor.toml
+
       - name: Rebuild with correct declare_id! (IDL gets correct address)
         run: anchor build
 
@@ -104,7 +109,14 @@ jobs:
 
       - name: Deploy Alon's Box V2
         if: needs.detect-changes.outputs.alons_box_v2 == 'true'
-        run: anchor deploy --provider.cluster devnet --program-name alons_box_v2
+        run: solana program deploy target/deploy/alons_box_v2.so --program-id 21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg --url devnet
+
+      - name: Initialize Alon's Box V2 (idempotent — skips if already init)
+        if: needs.detect-changes.outputs.alons_box_v2 == 'true'
+        env:
+          TREASURY_PUBKEY: ${{ secrets.TREASURY_PUBKEY }}
+          BUYBACK_PUBKEY: ${{ secrets.BUYBACK_PUBKEY }}
+        run: anchor run init-v2 --provider.cluster devnet
 
       - name: Deploy Two Pills
         if: needs.detect-changes.outputs.two_pills == 'true'

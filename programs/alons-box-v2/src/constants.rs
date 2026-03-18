@@ -33,4 +33,4 @@ pub const ENTRY_FEE_INCREMENT: u64 = 10_000_000;
 pub const PRICE_INTERVAL_SECS: i64 = 120;
 
 /// Emergency grace period: 24 hours in seconds
-pub const EMERGENCY_GRACE_SECS: i64 = 86_400;
+pub const EMERGENCY_GRACE_SECS: i64 = 86400;
