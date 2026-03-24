@@ -9,7 +9,7 @@ pub mod utils;
 
 use instructions::*;
 
-declare_id!("63TqEHi69yjvHLA1suNUFq7XUQUrPJsaTC2T52xZu5x1");
+declare_id!("21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg");
 
 #[program]
 pub mod alons_box_v2 {
