@@ -7,7 +7,7 @@ All on-chain state is stored in Program Derived Addresses (PDAs). PDAs are deter
 ## Account Map
 
 ```
-Program: 63TqEHi69yjvHLA1suNUFq7XUQUrPJsaTC2T52xZu5x1
+Program: 21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg
 │
 ├── V2GameState  ["v2_game_state"]
 │   Global singleton. Stores authority, treasury, round counter, timer config.
