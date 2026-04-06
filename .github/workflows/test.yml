@@ -51,4 +51,6 @@ jobs:
 
       - run: npm ci
 
-      - run: anchor test
+      # Force localnet so anchor test spins up a local validator instead of
+      # deploying to devnet (Anchor.toml defaults to devnet for production deploys)
+      - run: anchor test --provider.cluster localnet
