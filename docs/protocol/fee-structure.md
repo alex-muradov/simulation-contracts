@@ -51,7 +51,19 @@ New rollover = old rollover + rollover added. The `rollover_added` is computed a
 
 Rollover is tracked explicitly in `GameState.rollover_balance` rather than derived from the vault's lamport balance. This means:
 - Unsolicited SOL transfers to the vault are ignored by game math
+- The `donate` instruction (V2 only) is the canonical way to add SOL to rollover -- it transfers SOL to the vault and increments `rollover_balance` atomically
 - Vault balance invariant: `vault_lamports = rollover_balance + rent + active_deposits`
+
+### Donations (V2 only)
+
+The Alon's Box V2 program exposes a permissionless `donate` instruction. Any wallet can donate any amount of SOL to the pool at any time. Donations:
+
+- Flow directly to `game_state.rollover_balance` (no fee, no split)
+- Are preserved through both settle and expire — they never flow to buyback or treasury
+- Are not subject to the 5% treasury cut on the donated amount
+- Carry forward to subsequent rounds as part of `rollover_in`
+
+Donations are external to the standard BPS calculation: they are added on top of the computed rollover after each settle/expire to ensure mid-round donations are not absorbed by protocol fees. See [Donations](../games/alons-box-v2/donations.md) for the full mechanics.
 
 ## SSE Prediction Rounds (Suggested)
 

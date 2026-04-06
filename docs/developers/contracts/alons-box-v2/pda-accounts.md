@@ -39,13 +39,13 @@ Program: 21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg
 | `treasury` | `Pubkey` | 32 | Wallet receiving the 5% protocol fee |
 | `buyback_wallet` | `Pubkey` | 32 | Wallet receiving funds on expire |
 | `current_round_id` | `u64` | 8 | Counter tracking the latest round |
-| `rollover_balance` | `u64` | 8 | Explicit rollover balance (lamports) |
+| `rollover_balance` | `u64` | 8 | Explicit rollover balance (lamports). Includes any donations made via `donate`. |
 | `round_duration_secs` | `i64` | 8 | Round duration in seconds (e.g., 1200 = 20 min) |
 | `entry_cutoff_secs` | `i64` | 8 | Seconds before `ends_at` when entries close (e.g., 180 = 3 min) |
 | `bump` | `u8` | 1 | PDA bump seed |
 
 **Created by:** `initialize` (once, ever)
-**Modified by:** `create_round` (increments `current_round_id`), `settle` (updates `rollover_balance`), `expire` (updates `rollover_balance`), `force_expire` (updates `rollover_balance`), `sweep_v2_evidence` (updates `rollover_balance`)
+**Modified by:** `create_round` (increments `current_round_id`), `donate` (increments `rollover_balance`), `settle` (updates `rollover_balance`), `expire` (updates `rollover_balance`), `force_expire` (updates `rollover_balance`), `sweep_v2_evidence` (updates `rollover_balance`)
 
 ### Deriving the Address
 
@@ -67,10 +67,10 @@ const [gameStatePDA] = PublicKey.findProgramAddressSync(
 
 The Vault is a minimal account -- its purpose is to hold SOL via its lamport balance, not to store data. The Vault's lamport balance equals `V2GameState.rollover_balance + rent_exempt_minimum` plus any active-round deposits not yet settled/expired, plus any unsettled evidence pool funds.
 
-Rollover is tracked explicitly in `V2GameState.rollover_balance`, not derived from the Vault's lamport balance. Unsolicited SOL transfers to the Vault PDA are ignored by the game math.
+Rollover is tracked explicitly in `V2GameState.rollover_balance`, not derived from the Vault's lamport balance. Unsolicited SOL transfers to the Vault PDA are ignored by the game math -- to add funds to the rollover, use the `donate` instruction, which both transfers SOL to the vault and increments `rollover_balance` atomically.
 
 **Created by:** `initialize` (once, ever)
-**Lamports modified by:** `enter` (increases), `settle` (decreases), `expire` (decreases), `force_expire` (decreases), `claim_v2_evidence` (decreases)
+**Lamports modified by:** `enter` (increases), `donate` (increases), `settle` (decreases), `expire` (decreases), `force_expire` (decreases), `claim_v2_evidence` (decreases)
 
 ### Deriving the Address
 

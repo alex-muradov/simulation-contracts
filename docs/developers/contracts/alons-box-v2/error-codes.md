@@ -7,7 +7,7 @@
 | 6000 | `Unauthorized` | Unauthorized: caller is not the authority | `create_round`, `settle`, `expire`, `record_v2_evidence`, `claim_v2_evidence`, `sweep_v2_evidence`, `close_v2_evidence` |
 | 6001 | `RoundNotActive` | Round is not active | `enter`, `settle`, `expire`, `force_expire`, `record_v2_evidence` |
 | 6002 | `InvalidCommitHash` | Invalid commit hash: SHA-256 mismatch | `settle`, `expire` |
-| 6003 | `MathOverflow` | Math overflow | `create_round`, `enter`, `settle`, `expire`, `force_expire`, `record_v2_evidence`, `claim_v2_evidence`, `sweep_v2_evidence` |
+| 6003 | `MathOverflow` | Math overflow | `create_round`, `enter`, `donate`, `settle`, `expire`, `force_expire`, `record_v2_evidence`, `claim_v2_evidence`, `sweep_v2_evidence` |
 | 6004 | `EntryClosed` | Entry period has closed | `enter` |
 | 6005 | `InsufficientEntryFee` | Insufficient entry fee | `enter` |
 | 6006 | `AnswerTooLong` | Answer too long (max 64 bytes) | `settle`, `expire` |
@@ -22,6 +22,7 @@
 | 6015 | `NoEvidence` | No evidence recorded for this round | `claim_v2_evidence` |
 | 6016 | `NothingToClaim` | Nothing to claim | `claim_v2_evidence`, `sweep_v2_evidence` |
 | 6017 | `RoundNotSettled` | Round not settled | `claim_v2_evidence`, `sweep_v2_evidence` |
+| 6018 | `InvalidDonation` | Donation amount must be greater than zero | `donate` |
 
 ## Detailed Descriptions
 
@@ -150,6 +151,14 @@ The round's status is not `Settled`. Evidence claims and sweeps require the roun
 **Common causes:**
 - Attempting to claim evidence from an expired round (evidence is only distributed on settle)
 - Attempting to sweep evidence before the round is settled
+
+### 6018 -- InvalidDonation
+
+The `amount` parameter passed to `donate` is `0`. Donations must be at least 1 lamport.
+
+**Common causes:**
+- Calling `donate` with a zero amount
+- Empty integer initialization on the client side
 
 ## Anchor Framework Errors
 

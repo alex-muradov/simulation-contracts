@@ -30,6 +30,7 @@
 - [Entry Fees](games/alons-box-v2/entry-fees.md)
 - [Rounds](games/alons-box-v2/rounds.md)
 - [Evidence & YES Pool](games/alons-box-v2/evidence-and-yes-pool.md)
+- [Donations](games/alons-box-v2/donations.md)
 
 ## Developers
 

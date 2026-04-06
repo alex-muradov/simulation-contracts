@@ -38,4 +38,6 @@ pub enum V2Error {
     NothingToClaim,
     #[msg("Round not settled")]
     RoundNotSettled,
+    #[msg("Donation amount must be greater than zero")]
+    InvalidDonation,
 }

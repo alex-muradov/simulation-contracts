@@ -123,8 +123,13 @@ pub fn handler(ctx: Context<Expire>, answer: String, salt: String) -> Result<()>
         V2Error::VaultInsolvent
     );
 
-    // -- Update rollover --
-    ctx.accounts.game_state.rollover_balance = rollover_out;
+    // -- Update rollover (preserve any donations made during this round) --
+    let donations_during_round = ctx.accounts.game_state.rollover_balance
+        .checked_sub(rollover_in)
+        .ok_or(V2Error::MathOverflow)?;
+    ctx.accounts.game_state.rollover_balance = rollover_out
+        .checked_add(donations_during_round)
+        .ok_or(V2Error::MathOverflow)?;
 
     // -- Update round state --
     let round = &mut ctx.accounts.round;

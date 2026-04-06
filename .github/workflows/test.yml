@@ -42,3 +42,13 @@ jobs:
         run: solana-keygen new --no-bip39-passphrase
 
       - run: anchor build
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: anchor test

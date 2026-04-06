@@ -37,6 +37,10 @@ After entering, players interact for free:
 
 To submit a guess, a player must have asked at least **3 questions**, with at least **2 public**.
 
+### Donations
+
+Anyone — players, spectators, or sponsors — can donate any amount of SOL to the pool at any time using the permissionless `donate` instruction. Donations are added to `game_state.rollover_balance` and become part of the prize pool. Mid-round donations are **fully preserved** through both settle and expire flows: they are never split to buyback or treasury, and always carry forward to the next round (or boost the current round's payout). See [Donations](donations.md) for full details.
+
 ## End Conditions
 
 ### 1. Correct Guess Submitted (Settle)
@@ -105,7 +109,8 @@ Key properties:
 - Rollover is read from `game_state.rollover_balance` at round creation
 - On **settle**: rollover is the residual after paying winner, YES pool, and treasury (~30%)
 - On **expire**: only current deposits are split; previous rollover is fully preserved
-- Unsolicited SOL transfers to the vault are ignored by game math
+- **Donations** (via `donate`) are added to `rollover_balance` and preserved through settle/expire — they are not split to buyback/treasury
+- Unsolicited SOL transfers to the vault (without calling `donate`) are ignored by game math
 
 ## On-Chain Timer
 

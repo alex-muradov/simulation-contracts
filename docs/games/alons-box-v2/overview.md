@@ -13,6 +13,8 @@ A trustless crypto-AI guessing game on Solana. An AI hides a **two-word phrase**
 
 Entry is the only payment. Once you are in a round, all questions and guesses are free.
 
+**Optional: Donate to the pool.** Anyone — players, spectators, or sponsors — can donate any amount of SOL at any time using the permissionless `donate` instruction. Donations are added directly to rollover and are preserved through both settle and expire (they never flow to buyback or treasury). See [Donations](donations.md).
+
 ## End Conditions
 
 | Condition | What Happens |
@@ -33,3 +35,4 @@ Deployed on **Solana Devnet**. [View on Explorer](https://explorer.solana.com/ad
 - [Entry Fees](entry-fees.md) — Escalating entry fee system and strategy
 - [Evidence and YES Pool](evidence-and-yes-pool.md) — YES pool distribution and evidence mechanics
 - [Rounds](rounds.md) — Round lifecycle, state machine, end conditions
+- [Donations](donations.md) — Permissionless pool contributions via the `donate` instruction

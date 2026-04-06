@@ -77,3 +77,10 @@ pub struct V2EvidenceSwept {
     pub round_id: u64,
     pub unclaimed_amount: u64,
 }
+
+#[event]
+pub struct V2DonationMade {
+    pub donor: Pubkey,
+    pub amount: u64,
+    pub new_rollover_balance: u64,
+}

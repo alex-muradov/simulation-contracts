@@ -64,4 +64,8 @@ pub mod alons_box_v2 {
     pub fn close_v2_evidence(ctx: Context<CloseV2Evidence>) -> Result<()> {
         instructions::close_v2_evidence::handler(ctx)
     }
+
+    pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
+        instructions::donate::handler(ctx, amount)
+    }
 }
