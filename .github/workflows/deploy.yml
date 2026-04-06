@@ -89,18 +89,7 @@ jobs:
       - name: Configure Solana for devnet
         run: solana config set --url devnet
 
-      - name: Build (uses cached keypairs, generates if missing)
-        run: anchor build
-
-      - name: Sync declare_id! and Anchor.toml to match keypairs
-        run: anchor keys sync
-
-      - name: Pin V2 to deployed address (upgrade, not fresh deploy)
-        run: |
-          sed -i 's/declare_id!(".*")/declare_id!("21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg")/' programs/alons-box-v2/src/lib.rs
-          sed -i 's/alons_box_v2 = ".*"/alons_box_v2 = "21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg"/' Anchor.toml
-
-      - name: Rebuild with correct declare_id! (IDL gets correct address)
+      - name: Build all programs
         run: anchor build
 
       - name: Deploy Alon's Box
@@ -109,7 +98,7 @@ jobs:
 
       - name: Deploy Alon's Box V2
         if: needs.detect-changes.outputs.alons_box_v2 == 'true'
-        run: solana program deploy target/deploy/alons_box_v2.so --program-id 21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg --url devnet
+        run: anchor deploy --provider.cluster devnet --program-name alons_box_v2
 
       - name: Initialize Alon's Box V2 (idempotent — skips if already init)
         if: needs.detect-changes.outputs.alons_box_v2 == 'true'
@@ -172,14 +161,20 @@ jobs:
             sync_idl "two_pills" "simulation-back" "src/idl"
           fi
 
-          # Commit and push backend if changed
+          # Commit and open PR for backend IDL changes (instead of pushing directly to master)
           if [ -d "/tmp/simulation-back" ]; then
             cd /tmp/simulation-back
             if ! git diff --quiet; then
+              BRANCH="chore/idl-sync-$(date +%s)"
+              git checkout -b "$BRANCH"
               git add src/idl/
               git commit -m "chore: sync IDL from contracts deploy"
-              git push origin master
-              echo "✅ Backend IDL synced"
+              git push origin "$BRANCH"
+              gh pr create --repo alex-muradov/simulation-back \
+                --title "chore: sync IDL from contracts deploy" \
+                --body "Auto-generated IDL sync from contracts CI. Review before merging." \
+                --base master --head "$BRANCH"
+              echo "✅ Backend IDL sync PR created"
             else
               echo "No IDL changes for backend"
             fi

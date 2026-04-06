@@ -128,8 +128,13 @@ pub fn handler(ctx: Context<Settle>, answer: String, salt: String) -> Result<()>
         V2Error::VaultInsolvent
     );
 
-    // -- Update rollover (direct assignment -- pool already includes rollover_in) --
-    ctx.accounts.game_state.rollover_balance = final_rollover;
+    // -- Update rollover (preserve any donations made during this round) --
+    let donations_during_round = ctx.accounts.game_state.rollover_balance
+        .checked_sub(round.rollover_in)
+        .ok_or(V2Error::MathOverflow)?;
+    ctx.accounts.game_state.rollover_balance = final_rollover
+        .checked_add(donations_during_round)
+        .ok_or(V2Error::MathOverflow)?;
 
     // -- Update round state --
     let round = &mut ctx.accounts.round;

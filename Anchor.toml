@@ -7,12 +7,12 @@ skip-lint = false
 
 [programs.localnet]
 alons_box = "J5LMxDvUSz5Agbo3bjpJZN17p4BNfqGNbrhU5vqNYrEa"
-alons_box_v2 = "63TqEHi69yjvHLA1suNUFq7XUQUrPJsaTC2T52xZu5x1"
+alons_box_v2 = "21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg"
 two_pills = "7SbPUmDW8L44k7KRbxpMo7hBh4ocpv9kszpWz5iNPJLW"
 
 [programs.devnet]
 alons_box = "J5LMxDvUSz5Agbo3bjpJZN17p4BNfqGNbrhU5vqNYrEa"
-alons_box_v2 = "63TqEHi69yjvHLA1suNUFq7XUQUrPJsaTC2T52xZu5x1"
+alons_box_v2 = "21XdvvE67SYnRLLcLkFDTXMSkbLrJNh6Ndi5qe5ErZwg"
 two_pills = "7SbPUmDW8L44k7KRbxpMo7hBh4ocpv9kszpWz5iNPJLW"
 
 [registry]

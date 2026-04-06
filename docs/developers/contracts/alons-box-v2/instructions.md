@@ -2,7 +2,7 @@
 
 ## Overview
 
-The program exposes 10 instructions. Four are authority-only round lifecycle (`create_round`, `settle`, `expire`, `record_v2_evidence`), one is permissionless with a time gate (`force_expire`), two are authority-only cleanup (`sweep_v2_evidence`, `close_v2_evidence`), one is public entry (`enter`), one is dual-auth claim (`claim_v2_evidence`), and one is a one-time setup (`initialize`).
+The program exposes 11 instructions. Four are authority-only round lifecycle (`create_round`, `settle`, `expire`, `record_v2_evidence`), one is permissionless with a time gate (`force_expire`), two are authority-only cleanup (`sweep_v2_evidence`, `close_v2_evidence`), two are public (`enter`, `donate`), one is dual-auth claim (`claim_v2_evidence`), and one is a one-time setup (`initialize`).
 
 ```
 initialize  ──→  create_round  ──→  enter  ──→  settle
@@ -10,6 +10,8 @@ initialize  ──→  create_round  ──→  enter  ──→  settle
                                                  expire
                                                   or
                                             force_expire (24hr after ends_at)
+
+Anytime (permissionless):  donate  (any wallet adds SOL to rollover)
 
 During active round:  record_v2_evidence  (authority records YES answers)
 
@@ -227,6 +229,74 @@ await program.methods
 
 ---
 
+## `donate`
+
+Permissionless donation of any amount of SOL to the pool. Any wallet can call this at any time. Donations are added to `game_state.rollover_balance` and become part of the next round's pool. Mid-round donations are preserved through `settle`, `expire`, and `force_expire` (they are NOT split to buyback or treasury on expire).
+
+### Parameters
+
+| Name | Type | Description |
+|------|------|-------------|
+| `amount` | `u64` | Lamports to donate (must be > 0; no upper bound) |
+
+### Accounts
+
+| Account | Writable | Signer | Description |
+|---------|----------|--------|-------------|
+| `donor` | Yes | Yes | Any wallet -- no authority check |
+| `game_state` | Yes | No | Writable -- `rollover_balance` incremented |
+| `vault` | Yes | No | Receives the SOL |
+| `system_program` | No | No | Solana System Program |
+
+### Behavior
+
+1. Validates `amount > 0`
+2. Transfers `amount` lamports from donor to Vault via CPI (`system_program::transfer`)
+3. Increments `game_state.rollover_balance += amount`
+4. Emits `V2DonationMade` event (includes `donor`, `amount`, `new_rollover_balance`)
+
+### Donation Preservation Logic
+
+Donations are tracked through `game_state.rollover_balance`, not in the round account. When `create_round` runs, it snapshots `rollover_balance` into `round.rollover_in`. When `settle`, `expire`, or `force_expire` runs, it computes:
+
+```
+donations_during_round = game_state.rollover_balance - round.rollover_in
+new_rollover_balance = computed_rollover_out + donations_during_round
+```
+
+This means donations made between rounds are picked up as `rollover_in` for the next round, and donations made during an active round are added back to rollover after the payout math runs (preserving them across settle/expire).
+
+### No Round Required
+
+Unlike `enter`, `donate` does **not** take a `round` account. You can donate when no round is active -- the SOL simply sits in the vault and gets picked up as `rollover_in` when the next round is created.
+
+### Errors
+
+| Code | Name | Condition |
+|------|------|-----------|
+| 6018 | `InvalidDonation` | `amount == 0` |
+| 6003 | `MathOverflow` | Arithmetic overflow on `rollover_balance` accumulation |
+
+### Example
+
+```typescript
+// Donate 0.5 SOL to the pool (any wallet, anytime)
+const donationAmount = new BN(0.5 * LAMPORTS_PER_SOL);
+
+await program.methods
+  .donate(donationAmount)
+  .accounts({
+    donor: donorKeypair.publicKey,
+    gameState: gameStatePDA,
+    vault: vaultPDA,
+    systemProgram: SystemProgram.programId,
+  })
+  .signers([donorKeypair])
+  .rpc();
+```
+
+---
+
 ## `settle`
 
 Resolves a round with a winner. Authority-only. Reveals the answer, verifies the commit hash, and distributes payouts. If evidence exists (YES answers recorded), 15% is held in vault as the evidence pool for later claiming. If no evidence exists, the 15% is added to rollover.
@@ -271,7 +341,7 @@ Resolves a round with a winner. Authority-only. Reveals the answer, verifies the
     - 5% to treasury
     - (evidence pool stays in vault for later claiming)
 12. Post-distribution vault rent-exempt invariant check
-13. Updates `game_state.rollover_balance`
+13. Updates `game_state.rollover_balance = final_rollover + donations_during_round`, where `donations_during_round = current rollover_balance − round.rollover_in` (preserves any mid-round donations)
 14. Sets `round.status = Settled`
 15. Stores `revealed_answer` and `revealed_salt`
 16. Sets `round.evidence_pool` (either the 15% amount or 0)
@@ -347,11 +417,11 @@ Ends a round with no winner. Authority-only. Reveals the answer, verifies the co
 3. Computes `SHA-256(answer:salt)` and verifies against `round.commit_hash`
 4. Performs rent-exempt safety check on vault
 5. Reads `total_deposits` and `rollover_in` from the round
-6. Distributes from Vault PDA (**based on `total_deposits` only** -- previous rollover is preserved):
+6. Distributes from Vault PDA (**based on `total_deposits` only** -- previous rollover and mid-round donations are preserved):
    - 47.5% (4750 BPS) of `total_deposits` to buyback wallet
    - 5% (500 BPS) of `total_deposits` to treasury
 7. Computes residual: `rollover_added = total_deposits - buyback - treasury`
-8. Updates `game_state.rollover_balance = rollover_in + rollover_added`
+8. Updates `game_state.rollover_balance = rollover_in + rollover_added + donations_during_round`, where `donations_during_round = current rollover_balance − round.rollover_in` (preserves any mid-round donations -- they are NOT split to buyback/treasury)
 9. Post-distribution vault rent-exempt invariant check
 10. Sets `round.status = Expired`
 11. Stores `revealed_answer` and `revealed_salt`
@@ -416,11 +486,11 @@ None.
 4. Validates buyback wallet and treasury against V2GameState
 5. Performs rent-exempt safety check on vault
 6. Reads `total_deposits` and `rollover_in` from the round
-7. Distributes from Vault PDA (**based on `total_deposits` only** -- previous rollover is preserved):
+7. Distributes from Vault PDA (**based on `total_deposits` only** -- previous rollover and mid-round donations are preserved):
    - 47.5% (4750 BPS) of `total_deposits` to buyback wallet
    - 5% (500 BPS) of `total_deposits` to treasury
 8. Computes residual: `rollover_added = total_deposits - buyback - treasury`
-9. Updates `game_state.rollover_balance = rollover_in + rollover_added`
+9. Updates `game_state.rollover_balance = rollover_in + rollover_added + donations_during_round` (preserves any mid-round donations)
 10. Post-distribution vault rent-exempt invariant check
 11. Sets `round.status = Expired`
 12. Does NOT store revealed answer/salt (answer is forfeit)

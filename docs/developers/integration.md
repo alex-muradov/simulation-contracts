@@ -188,6 +188,35 @@ async function expireRound(
 }
 ```
 
+### 4. Donate to the Pool (V2 only, permissionless)
+
+```typescript
+async function donate(
+  donor: anchor.web3.Keypair,
+  amountSol: number
+): Promise<string> {
+  const amount = new BN(amountSol * LAMPORTS_PER_SOL);
+
+  const tx = await program.methods
+    .donate(amount)
+    .accounts({
+      donor: donor.publicKey,
+      gameState: gameStatePDA,
+      vault: vaultPDA,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([donor])
+    .rpc();
+
+  return tx;
+}
+
+// Anyone can call this -- not just the authority. The donated SOL is added
+// to game_state.rollover_balance and becomes part of the next round's pool.
+// Mid-round donations are preserved through settle/expire.
+await donate(sponsorKeypair, 0.5);
+```
+
 ## Reading On-Chain State
 
 ### Fetch Game State

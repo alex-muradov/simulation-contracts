@@ -141,10 +141,33 @@ This guarantees that all rounding dust is captured in rollover, keeping the vaul
 
 **Guarantee:** All state transitions are observable off-chain.
 
-Every state-mutating instruction emits a structured event (`V2GameInitialized`, `V2RoundCreated`, `V2EntryMade`, `V2RoundSettled`, `V2RoundExpired`, `V2ForceExpired`, `V2EvidenceRecorded`, `V2EvidenceClaimed`, `V2EvidenceSwept`). Settlement and expiry events include `rollover_out` for tracking the rollover balance. These events enable:
+Every state-mutating instruction emits a structured event (`V2GameInitialized`, `V2RoundCreated`, `V2EntryMade`, `V2DonationMade`, `V2RoundSettled`, `V2RoundExpired`, `V2ForceExpired`, `V2EvidenceRecorded`, `V2EvidenceClaimed`, `V2EvidenceSwept`). Settlement and expiry events include `rollover_out` for tracking the rollover balance. These events enable:
 - Real-time monitoring of game activity
 - Detection of anomalous behavior (e.g., unexpected force expires)
 - Historical audit trail indexed via Solana event parsers
+
+### 16. Permissionless Donations
+
+**Guarantee:** Donations are atomic, non-refundable, and cannot be exploited to drain or destabilize the vault.
+
+The `donate` instruction lets any wallet add SOL to the prize pool. It is a one-way contribution -- once donated, SOL cannot be withdrawn or refunded. Security properties:
+
+- **Atomic accounting:** The lamport transfer to the vault and the `rollover_balance` increment occur in the same transaction. There is no path where the vault grows without `rollover_balance` growing by the same amount.
+- **Zero-amount rejected:** `donate(0)` reverts with `InvalidDonation`, preventing dust spam.
+- **Overflow safe:** `rollover_balance` increment uses `checked_add`, reverting with `MathOverflow` if it would exceed `u64::MAX`.
+- **No round dependency:** Donations work whether or not a round is active. There is no race condition with `create_round`, `settle`, or `expire`.
+- **Mid-round preservation:** Donations made during an active round are preserved through settle/expire. The contract computes `donations_during_round = current rollover_balance − round.rollover_in` and adds it back to the new `rollover_balance` after the standard payout split, ensuring donations cannot be silently absorbed by buyback or treasury.
+- **No state inflation:** Donations create no per-donor PDAs, no rent burden, and no on-chain footprint beyond the lamport transfer and a single `u64` increment.
+- **No privilege:** Donating does not grant entry, evidence credit, voting rights, or any claim on the pool. It is a pure contribution.
+
+The threat model considered for donations:
+
+| Attack | Mitigation |
+|--------|------------|
+| Donate then drain via `force_expire` | Donations are excluded from the buyback/treasury split on expire and force_expire — they always flow to rollover |
+| Donate to inflate vault, then attempt to over-claim evidence | Evidence shares are computed from `evidence_pool` (a fixed BPS of `pool` set at settle time), not from raw vault balance |
+| Spam tiny donations to bloat events | No per-donation PDA is created, so there is no state cost. Off-chain indexers may apply their own filtering. |
+| Donate via system transfer (bypass `donate`) | Unsolicited transfers to the vault are ignored by game math — only `donate` increments `rollover_balance` |
 
 ## What the Contract Does NOT Protect Against
 
