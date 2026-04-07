@@ -71,34 +71,31 @@ pub fn handler(ctx: Context<Settle>, winner: u8) -> Result<()> {
         _ => {}
     }
 
-    // Determine loser deposits (player deposits only, exclude seeds)
-    let loser_player_deposits = match winner_side {
-        Side::A => round.pool_b.checked_sub(round.seed_b).ok_or(TwoPillsError::MathOverflow)?,
-        Side::B => round.pool_a.checked_sub(round.seed_a).ok_or(TwoPillsError::MathOverflow)?,
-        _ => 0,
-    };
+    // Total pool = all deposits + seeds on both sides
+    let total_pool = round.pool_a
+        .checked_add(round.pool_b)
+        .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Calculate splits from loser player deposits
-    let treasury_amount = loser_player_deposits
+    // Calculate splits from total pool: 10% treasury, 20% NRR, 70% winners
+    let treasury_amount = total_pool
         .checked_mul(TREASURY_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    let nrr_share = loser_player_deposits
+    let nrr_share = total_pool
         .checked_mul(NRR_BPS)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_div(10000)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // Winners share = 70% of loser player deposits
-    let winners_share = loser_player_deposits
+    // Winners share = 70% of total pool
+    let winners_share = total_pool
         .checked_sub(treasury_amount)
         .ok_or(TwoPillsError::MathOverflow)?
         .checked_sub(nrr_share)
         .ok_or(TwoPillsError::MathOverflow)?;
 
-    // NRR return = only nrr_share (seeds are already in pools, no double-return)
     let total_nrr_return = nrr_share;
 
     // [REVIEW FIX] Effects-before-interactions: update state BEFORE transfer
