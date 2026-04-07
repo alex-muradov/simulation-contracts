@@ -384,14 +384,14 @@ describe("two_pills", () => {
       expect(round.winner).to.deep.equal({ a: {} });
       expect(round.settledAt.toNumber()).to.be.greaterThan(0);
 
-      // Treasury should have received 10% of loser deposits (pool_b = 0.05 SOL)
-      // treasury_amount = 50_000_000 * 1000 / 10000 = 5_000_000
+      // Treasury should have received 10% of total pool (pool_a + pool_b = 0.14 SOL)
+      // treasury_amount = 140_000_000 * 1000 / 10000 = 14_000_000
       const treasuryAfter = await getBalance(treasury.publicKey);
-      expect(treasuryAfter - treasuryBefore).to.equal(5_000_000);
+      expect(treasuryAfter - treasuryBefore).to.equal(14_000_000);
 
-      // NRR should have received 20% of loser deposits = 10_000_000
+      // NRR should have received 20% of total pool = 28_000_000
       const gs = await program.account.pillsGameState.fetch(gameStatePda);
-      expect(gs.nrrBalance.toNumber()).to.equal(10_000_000); // 20% of 0.05 SOL
+      expect(gs.nrrBalance.toNumber()).to.equal(28_000_000); // 20% of 0.14 SOL
     });
 
     it("rejects double settle", async () => {
@@ -465,12 +465,11 @@ describe("two_pills", () => {
     // Round 1 is settled, side A won
     // playerA1 deposited: 0.06 SOL (0.05 + 0.01), playerA2: 0.03 SOL
     // poolA = 0.09 SOL, poolB = 0.05 SOL
-    // loser_deposits = 0.05 SOL
-    // treasury = 10% = 0.005, nrr = 20% = 0.01, winners_share = 70% = 0.035
-    // playerA1 share: (0.06 / 0.09) * 0.035 = 0.02333... → 23_333_333 lamports
-    // playerA1 payout: 60_000_000 + 23_333_333 = 83_333_333
-    // playerA2 share: (0.03 / 0.09) * 0.035 = 0.01166... → 11_666_666 lamports
-    // playerA2 payout: 30_000_000 + 11_666_666 = 41_666_666
+    // total_pool = 0.09 + 0.05 = 0.14 SOL
+    // treasury = 10% = 0.014, nrr = 20% = 0.028, winners_share = 70% = 0.098
+    // playerA1 payout: (0.06 / 0.09) * 0.098 = 65_333_333 lamports
+    // playerA2 payout: (0.03 / 0.09) * 0.098 = 32_666_666 lamports
+    // NO separate stake-back — the 70% IS the total payout
 
     it("player A1 claims payout (self-claim)", async () => {
       const balBefore = await getBalance(playerA1.publicKey);
@@ -480,11 +479,10 @@ describe("two_pills", () => {
       const balAfter = await getBalance(playerA1.publicKey);
       const received = balAfter - balBefore;
 
-      // Should receive ~83_333_333 lamports (minus TX fee ~5000)
-      // winners_share = 50_000_000 - 5_000_000 - 10_000_000 = 35_000_000
-      // playerA1: (60_000_000 * 35_000_000) / 90_000_000 = 23_333_333
-      // payout = 60_000_000 + 23_333_333 = 83_333_333
-      const expectedPayout = 83_333_333;
+      // Should receive ~65_333_333 lamports (minus TX fee ~5000)
+      // winners_share = 140_000_000 * 70% = 98_000_000
+      // playerA1: (60_000_000 / 90_000_000) * 98_000_000 = 65_333_333
+      const expectedPayout = 65_333_333;
       // Account for TX fee (~5000 lamports)
       expect(received).to.be.closeTo(expectedPayout, 10_000);
 
@@ -502,9 +500,8 @@ describe("two_pills", () => {
       const balAfter = await getBalance(playerA2.publicKey);
       const received = balAfter - balBefore;
 
-      // playerA2 payout: 30_000_000 + (30_000_000 * 35_000_000) / 90_000_000
-      // = 30_000_000 + 11_666_666 = 41_666_666
-      const expectedPayout = 41_666_666;
+      // playerA2 payout: (30_000_000 / 90_000_000) * 98_000_000 = 32_666_666
+      const expectedPayout = 32_666_666;
       // No TX fee for beneficiary (authority pays)
       expect(received).to.equal(expectedPayout);
     });
@@ -584,11 +581,10 @@ describe("two_pills", () => {
   describe("NRR seeding", () => {
     it("NRR was consumed by round 2 seeds (settle round 1 funded 10M, round 2 creation spent it)", async () => {
       const gs = await program.account.pillsGameState.fetch(gameStatePda);
-      // Round 1 settle: nrr += 10_000_000 (20% of 0.05 SOL loser pool)
-      // Round 2 create: nrr -= 10_000_000 (consumed as seeds: 5M + 5M)
-      // Round 2 settle: nrr += seeds_total(10M) + nrr_share(0) = 10_000_000
-      //   (pool only had side A, no loser deposits, but seeds return)
-      // Round 3 create: nrr -= 10_000_000 (consumed as seeds again)
+      // Round 1 settle: nrr += 28_000_000 (20% of 0.14 SOL total pool)
+      // Round 2 create: nrr -= 28_000_000 (consumed as seeds: 14M + 14M)
+      // Round 2 settle: nrr += 7_600_000 (20% of 38M total pool)
+      // Round 3 create: nrr -= 7_600_000 (consumed as seeds: 3.8M + 3.8M)
       // Round 3 NOT settled (still active) — seeds not returned yet
       // Current NRR balance = 0
       expect(gs.nrrBalance.toNumber()).to.equal(0);
@@ -596,8 +592,8 @@ describe("two_pills", () => {
       // Verify round 2 DID receive seeds from NRR
       const [round2Pda] = getRoundPda(2);
       const round2 = await program.account.pillsRound.fetch(round2Pda);
-      expect(round2.seedA.toNumber()).to.equal(5_000_000);
-      expect(round2.seedB.toNumber()).to.equal(5_000_000);
+      expect(round2.seedA.toNumber()).to.equal(14_000_000);
+      expect(round2.seedB.toNumber()).to.equal(14_000_000);
     });
   });
 
@@ -674,8 +670,8 @@ describe("two_pills", () => {
       const loserPlayerDeposits = round.poolB.toNumber() - round.seedB.toNumber();
       expect(loserPlayerDeposits).to.equal(0);
 
-      // Treasury comes from loser PLAYER deposits (excluding seeds), so should be 0
-      expect(round.treasuryPaid.toNumber()).to.equal(0);
+      // Treasury = 10% of total pool (including seeds): 38M * 10% = 3_800_000
+      expect(round.treasuryPaid.toNumber()).to.equal(3_800_000);
     });
   });
 
