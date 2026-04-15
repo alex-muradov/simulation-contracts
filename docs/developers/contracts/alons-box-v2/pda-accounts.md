@@ -118,6 +118,7 @@ pub enum V2RoundStatus {
 
 **Created by:** `create_round`
 **Modified by:** `enter` (total_entries, total_deposits), `record_v2_evidence` (evidence_count, total_yes_answers), `settle` (status, revealed_answer, revealed_salt, evidence_pool), `expire` (status, revealed_answer, revealed_salt), `force_expire` (status), `claim_v2_evidence` (evidence_claimed), `sweep_v2_evidence` (evidence_claimed)
+**Closed by:** `close_v2_round` (recovers rent to authority; requires evidence fully resolved)
 
 ### Deriving the Address
 
@@ -146,7 +147,8 @@ const [roundPDA] = PublicKey.findProgramAddressSync(
 
 Unlike V1's Deposit which uses `init_if_needed` (allowing multiple deposits per round), the V2Entry uses `init` -- each player gets exactly one entry per round. The entry fee is determined by the escalating price schedule at the time of entry.
 
-**Created by:** `enter`
+**Created by:** `enter` (payer is the player)
+**Closed by:** `close_v2_entry` (recovers rent to the **player**, not the authority)
 
 ### Deriving the Address
 

@@ -13,7 +13,9 @@ Active Round Phase:
 Post-Settlement Phase:
   claim_v2_evidence   (wallet or authority claims proportional share)
   sweep_v2_evidence   (authority sweeps unclaimed funds to rollover)
-  close_v2_evidence   (authority closes PDA for rent recovery)
+  close_v2_evidence   (authority closes evidence PDA, rent → authority)
+  close_v2_entry      (authority closes entry PDA, rent → player)
+  close_v2_round      (authority closes round PDA, rent → authority; requires evidence resolved)
 ```
 
 ---
@@ -189,9 +191,13 @@ Multiple YES answers for the same wallet increment `yes_count`, giving that wall
    → Backend calls sweep_v2_evidence(round_id)
      to move unclaimed funds to rollover
 
-4. Cleanup:
+4. Cleanup (rent recovery):
    → Backend calls close_v2_evidence for each evidence PDA
-     to recover rent
+     (rent → authority)
+   → Backend calls close_v2_entry for each entry PDA
+     (rent → player who entered)
+   → Backend calls close_v2_round for the round PDA
+     (rent → authority; must be last — requires evidence resolved)
 ```
 
 ### Timing Considerations
@@ -256,7 +262,7 @@ await program.methods
   })
   .rpc();
 
-// 5. Close evidence PDA
+// 5. Close evidence PDA (rent → authority)
 await program.methods
   .closeV2Evidence()
   .accounts({
@@ -264,6 +270,28 @@ await program.methods
     gameState: gameStatePDA,
     round: roundPDA,
     evidence: evidencePDA,
+  })
+  .rpc();
+
+// 6. Close entry PDA (rent → player)
+await program.methods
+  .closeV2Entry()
+  .accounts({
+    authority: wallet.publicKey,
+    gameState: gameStatePDA,
+    round: roundPDA,
+    entry: entryPDA,
+    player: playerPubkey,
+  })
+  .rpc();
+
+// 7. Close round PDA (rent → authority; must be last)
+await program.methods
+  .closeV2Round()
+  .accounts({
+    authority: wallet.publicKey,
+    gameState: gameStatePDA,
+    round: roundPDA,
   })
   .rpc();
 ```

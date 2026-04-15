@@ -36,13 +36,13 @@ There is no instruction that allows arbitrary withdrawal from the Vault.
 
 **Guarantee:** Only the designated authority can manage rounds and evidence.
 
-The authority is set once in `initialize` and stored in `V2GameState`. Every `create_round`, `settle`, `expire`, `record_v2_evidence`, `sweep_v2_evidence`, and `close_v2_evidence` instruction validates the signer against `game_state.authority`. An attacker with a different keypair cannot:
+The authority is set once in `initialize` and stored in `V2GameState`. Every `create_round`, `settle`, `expire`, `record_v2_evidence`, `sweep_v2_evidence`, `close_v2_evidence`, `close_v2_entry`, and `close_v2_round` instruction validates the signer against `game_state.authority`. An attacker with a different keypair cannot:
 - Create rounds
 - Settle rounds (directing payouts to themselves)
 - Expire rounds
 - Record evidence
 - Sweep unclaimed evidence to rollover
-- Close evidence PDAs
+- Close evidence, entry, or round PDAs
 
 ### 4. Sequential Round Enforcement
 

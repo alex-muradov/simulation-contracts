@@ -8,6 +8,8 @@ pub mod record_v2_evidence;
 pub mod claim_v2_evidence;
 pub mod sweep_v2_evidence;
 pub mod close_v2_evidence;
+pub mod close_v2_entry;
+pub mod close_v2_round;
 pub mod donate;
 
 pub use initialize::*;
@@ -20,4 +22,6 @@ pub use record_v2_evidence::*;
 pub use claim_v2_evidence::*;
 pub use sweep_v2_evidence::*;
 pub use close_v2_evidence::*;
+pub use close_v2_entry::*;
+pub use close_v2_round::*;
 pub use donate::*;

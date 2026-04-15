@@ -65,6 +65,14 @@ pub mod alons_box_v2 {
         instructions::close_v2_evidence::handler(ctx)
     }
 
+    pub fn close_v2_entry(ctx: Context<CloseV2Entry>) -> Result<()> {
+        instructions::close_v2_entry::handler(ctx)
+    }
+
+    pub fn close_v2_round(ctx: Context<CloseV2Round>) -> Result<()> {
+        instructions::close_v2_round::handler(ctx)
+    }
+
     pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
         instructions::donate::handler(ctx, amount)
     }
