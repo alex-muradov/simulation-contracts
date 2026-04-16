@@ -2,7 +2,7 @@
 
 ## Overview
 
-The program exposes 11 instructions. Four are authority-only round lifecycle (`create_round`, `settle`, `expire`, `record_v2_evidence`), one is permissionless with a time gate (`force_expire`), two are authority-only cleanup (`sweep_v2_evidence`, `close_v2_evidence`), two are public (`enter`, `donate`), one is dual-auth claim (`claim_v2_evidence`), and one is a one-time setup (`initialize`).
+The program exposes 13 instructions. Four are authority-only round lifecycle (`create_round`, `settle`, `expire`, `record_v2_evidence`), one is permissionless with a time gate (`force_expire`), four are authority-only cleanup (`sweep_v2_evidence`, `close_v2_evidence`, `close_v2_entry`, `close_v2_round`), two are public (`enter`, `donate`), one is dual-auth claim (`claim_v2_evidence`), and one is a one-time setup (`initialize`).
 
 ```
 initialize  ──→  create_round  ──→  enter  ──→  settle
@@ -16,6 +16,8 @@ Anytime (permissionless):  donate  (any wallet adds SOL to rollover)
 During active round:  record_v2_evidence  (authority records YES answers)
 
 After settlement:  claim_v2_evidence  /  sweep_v2_evidence  /  close_v2_evidence
+
+After settle/expire:  close_v2_entry  /  close_v2_round  (rent recovery)
 ```
 
 ---
@@ -766,6 +768,115 @@ await program.methods
     gameState: gameStatePDA,
     round: roundPDA,
     evidence: evidencePDA,
+  })
+  .rpc();
+```
+
+---
+
+## `close_v2_entry`
+
+Closes a V2Entry PDA after its round has been settled or expired, recovering rent to the original player who paid it. Authority-only (the authority authorizes the close, but the rent refund goes to the player).
+
+### Parameters
+
+None.
+
+### Accounts
+
+| Account | Writable | Signer | Description |
+|---------|----------|--------|-------------|
+| `authority` | Yes | Yes | Must match `V2GameState.authority` |
+| `game_state` | No | No | Authority validation |
+| `round` | No | No | Must NOT be Active status |
+| `entry` | Yes | No | PDA to be closed (rent returned to player) |
+| `player` | Yes | No | Original player who created the entry, must match `entry.player` -- receives rent refund |
+
+### Behavior
+
+1. Validates caller is the authority
+2. Validates `round.status != Active` (round must be settled or expired)
+3. Validates `entry.round_id == round.round_id`
+4. Validates `player.key() == entry.player`
+5. Closes the V2Entry PDA, returning rent to the **player** (via Anchor `close = player`)
+6. Logs closure confirmation
+
+### Rent Refund
+
+Unlike `close_v2_evidence` and `close_v2_round` which return rent to the authority (who paid for those PDAs), `close_v2_entry` returns rent to the **player** because the player was the original payer on the `enter` instruction (`payer = player`).
+
+### Errors
+
+| Code | Name | Condition |
+|------|------|-----------|
+| 6000 | `Unauthorized` | Caller is not the authority, or player doesn't match `entry.player` |
+| 6009 | `RoundStillActive` | Round has not been settled or expired yet |
+
+### Example
+
+```typescript
+await program.methods
+  .closeV2Entry()
+  .accounts({
+    authority: wallet.publicKey,
+    gameState: gameStatePDA,
+    round: roundPDA,
+    entry: entryPDA,
+    player: playerPubkey,
+  })
+  .rpc();
+```
+
+---
+
+## `close_v2_round`
+
+Closes a V2Round PDA after it has been settled or expired and all evidence has been resolved, recovering rent to the authority. Authority-only.
+
+### Parameters
+
+None.
+
+### Accounts
+
+| Account | Writable | Signer | Description |
+|---------|----------|--------|-------------|
+| `authority` | Yes | Yes | Must match `V2GameState.authority` -- receives rent |
+| `game_state` | No | No | Authority validation |
+| `round` | Yes | No | PDA to be closed (rent returned to authority) |
+
+### Behavior
+
+1. Validates caller is the authority
+2. Validates `round.status != Active` (round must be settled or expired)
+3. Validates evidence is fully resolved: `evidence_pool == 0` (no evidence existed) OR `evidence_pool == evidence_claimed` (all evidence claimed or swept)
+4. Closes the V2Round PDA, returning rent to the authority (via Anchor `close = authority`)
+5. Logs closure confirmation
+
+### Safety: Evidence Resolution Check
+
+The `close_v2_round` instruction requires all evidence to be resolved before the round PDA can be closed. This prevents closing a round while evidence claims are still pending (which would orphan funds in the vault).
+
+- Expired rounds always have `evidence_pool == 0` (settle never ran), so they can be closed immediately
+- Settled rounds require either all claims to have been processed, or `sweep_v2_evidence` to have been called first
+
+### Errors
+
+| Code | Name | Condition |
+|------|------|-----------|
+| 6000 | `Unauthorized` | Caller is not the authority |
+| 6009 | `RoundStillActive` | Round has not been settled or expired yet |
+| 6019 | `EvidenceNotResolved` | Evidence pool not fully resolved (claim or sweep first) |
+
+### Example
+
+```typescript
+await program.methods
+  .closeV2Round()
+  .accounts({
+    authority: wallet.publicKey,
+    gameState: gameStatePDA,
+    round: roundPDA,
   })
   .rpc();
 ```

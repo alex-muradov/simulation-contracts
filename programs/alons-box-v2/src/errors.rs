@@ -40,4 +40,6 @@ pub enum V2Error {
     RoundNotSettled,
     #[msg("Donation amount must be greater than zero")]
     InvalidDonation,
+    #[msg("Evidence pool not fully resolved (claim or sweep first)")]
+    EvidenceNotResolved,
 }

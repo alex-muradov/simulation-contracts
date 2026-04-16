@@ -129,9 +129,10 @@ pub fn handler(ctx: Context<Settle>, answer: String, salt: String) -> Result<()>
     );
 
     // -- Update rollover (preserve any donations made during this round) --
+    // saturating_sub: if a prior round's settlement reduced rollover_balance
+    // below this round's rollover_in, treat donations as 0 rather than panic
     let donations_during_round = ctx.accounts.game_state.rollover_balance
-        .checked_sub(round.rollover_in)
-        .ok_or(V2Error::MathOverflow)?;
+        .saturating_sub(round.rollover_in);
     ctx.accounts.game_state.rollover_balance = final_rollover
         .checked_add(donations_during_round)
         .ok_or(V2Error::MathOverflow)?;

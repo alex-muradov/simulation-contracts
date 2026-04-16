@@ -13,7 +13,7 @@
 | 6006 | `AnswerTooLong` | Answer too long (max 64 bytes) | `settle`, `expire` |
 | 6007 | `SaltTooLong` | Salt too long (max 64 bytes) | `settle`, `expire` |
 | 6008 | `InvalidRoundId` | Invalid round ID | `create_round` |
-| 6009 | `RoundStillActive` | Round is still active | `close_v2_evidence` |
+| 6009 | `RoundStillActive` | Round is still active | `close_v2_evidence`, `close_v2_entry`, `close_v2_round` |
 | 6010 | `GracePeriodNotElapsed` | Emergency grace period has not elapsed | `force_expire` |
 | 6011 | `InvalidEndTime` | Invalid end time | (reserved) |
 | 6012 | `VaultInsolvent` | Vault is insolvent | `settle`, `expire`, `force_expire`, `claim_v2_evidence` |
@@ -23,6 +23,7 @@
 | 6016 | `NothingToClaim` | Nothing to claim | `claim_v2_evidence`, `sweep_v2_evidence` |
 | 6017 | `RoundNotSettled` | Round not settled | `claim_v2_evidence`, `sweep_v2_evidence` |
 | 6018 | `InvalidDonation` | Donation amount must be greater than zero | `donate` |
+| 6019 | `EvidenceNotResolved` | Evidence pool not fully resolved (claim or sweep first) | `close_v2_round` |
 
 ## Detailed Descriptions
 
@@ -91,10 +92,10 @@ The provided `round_id` does not equal `game_state.current_round_id + 1`. Rounds
 
 ### 6009 -- RoundStillActive
 
-The target round's status is still `Active`. The `close_v2_evidence` instruction can only be called after a round has been settled or expired.
+The target round's status is still `Active`. The `close_v2_evidence`, `close_v2_entry`, and `close_v2_round` instructions can only be called after a round has been settled or expired.
 
 **Common causes:**
-- Attempting to close an evidence PDA before the round has been resolved
+- Attempting to close a PDA before the round has been resolved
 
 ### 6010 -- GracePeriodNotElapsed
 
@@ -159,6 +160,14 @@ The `amount` parameter passed to `donate` is `0`. Donations must be at least 1 l
 **Common causes:**
 - Calling `donate` with a zero amount
 - Empty integer initialization on the client side
+
+### 6019 -- EvidenceNotResolved
+
+The V2Round's evidence pool has not been fully resolved. `close_v2_round` requires that either `evidence_pool == 0` (no evidence existed for this round) or `evidence_pool == evidence_claimed` (all evidence has been claimed or swept). This prevents closing a round PDA while evidence claims are still pending, which would orphan funds in the vault.
+
+**Common causes:**
+- Attempting to close a settled round before calling `sweep_v2_evidence`
+- Attempting to close a settled round before all `claim_v2_evidence` calls have completed
 
 ## Anchor Framework Errors
 
