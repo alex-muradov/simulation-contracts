@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+// V2 program — deploy via CI with V2_PROGRAM_KEYPAIR
 pub mod constants;
 pub mod errors;
 pub mod events;

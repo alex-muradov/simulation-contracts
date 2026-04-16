@@ -89,6 +89,11 @@ jobs:
       - name: Configure Solana for devnet
         run: solana config set --url devnet
 
+      - name: Setup program keypairs
+        run: |
+          mkdir -p target/deploy
+          echo '${{ secrets.V2_PROGRAM_KEYPAIR }}' > target/deploy/alons_box_v2-keypair.json
+
       - name: Build all programs
         run: anchor build
 
