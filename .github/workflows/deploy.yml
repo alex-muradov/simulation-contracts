@@ -92,6 +92,10 @@ jobs:
       - name: Build all programs
         run: anchor build
 
+      - name: Setup program keypairs (after build to override cache + anchor defaults)
+        run: |
+          echo '${{ secrets.V2_PROGRAM_KEYPAIR }}' > target/deploy/alons_box_v2-keypair.json
+
       - name: Deploy Alon's Box
         if: needs.detect-changes.outputs.alons_box == 'true'
         run: anchor deploy --provider.cluster devnet --program-name alons_box
