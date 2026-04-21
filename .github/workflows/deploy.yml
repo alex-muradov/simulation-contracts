@@ -2,7 +2,7 @@ name: Deploy to Devnet
 
 on:
   push:
-    branches: [master]
+    branches: [dev]
 
 env:
   SOLANA_VERSION: "3.1.10"
@@ -165,11 +165,12 @@ jobs:
             sync_idl "two_pills" "simulation-back" "src/idl"
           fi
 
-          # Commit and open PR for backend IDL changes (instead of pushing directly to master)
+          # Commit and open PR for backend IDL changes (instead of pushing directly to dev)
           if [ -d "/tmp/simulation-back" ]; then
             cd /tmp/simulation-back
             if ! git diff --quiet; then
               BRANCH="chore/idl-sync-$(date +%s)"
+              git checkout dev
               git checkout -b "$BRANCH"
               git add src/idl/
               git commit -m "chore: sync IDL from contracts deploy"
@@ -177,7 +178,7 @@ jobs:
               gh pr create --repo alex-muradov/simulation-back \
                 --title "chore: sync IDL from contracts deploy" \
                 --body "Auto-generated IDL sync from contracts CI. Review before merging." \
-                --base master --head "$BRANCH"
+                --base dev --head "$BRANCH"
               echo "✅ Backend IDL sync PR created"
             else
               echo "No IDL changes for backend"
