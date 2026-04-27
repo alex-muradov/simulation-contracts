@@ -77,4 +77,8 @@ pub mod alons_box_v2 {
     pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
         instructions::donate::handler(ctx, amount)
     }
+
+    pub fn update_game_authority(ctx: Context<UpdateGameAuthority>, new_authority: Pubkey) -> Result<()> {
+        instructions::update_game_authority::handler(ctx, new_authority)
+    }
 }

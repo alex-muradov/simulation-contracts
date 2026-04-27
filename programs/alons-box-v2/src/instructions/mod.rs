@@ -11,6 +11,7 @@ pub mod close_v2_evidence;
 pub mod close_v2_entry;
 pub mod close_v2_round;
 pub mod donate;
+pub mod update_game_authority;
 
 pub use initialize::*;
 pub use create_round::*;
@@ -25,3 +26,4 @@ pub use close_v2_evidence::*;
 pub use close_v2_entry::*;
 pub use close_v2_round::*;
 pub use donate::*;
+pub use update_game_authority::*;

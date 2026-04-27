@@ -84,3 +84,9 @@ pub struct V2DonationMade {
     pub amount: u64,
     pub new_rollover_balance: u64,
 }
+
+#[event]
+pub struct V2GameAuthorityUpdated {
+    pub old_authority: Pubkey,
+    pub new_authority: Pubkey,
+}
